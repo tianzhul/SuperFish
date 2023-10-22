@@ -1,0 +1,93 @@
+package com.main.Command;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+public class RandomCommand {
+    public static List<String> choice(List<String> commands, int num) {
+        if (num > commands.size()) {
+            throw new IndexOutOfBoundsException("Trying to select " + num + " commands, but there are only " + commands.size() + " available.");
+        } else {
+            List<Double> probs = commands.stream()
+                    .map(cmd -> {
+                        try {
+                            String[] parts = cmd.split("\\|");
+                            if (parts.length < 2) {
+                                throw new IllegalArgumentException("Invalid command format: " + cmd);
+                            }
+                            return Double.parseDouble(parts[1]);
+                        } catch (ArrayIndexOutOfBoundsException e) {
+                            throw new IllegalArgumentException("Invalid command format: " + cmd);
+                        } catch (NumberFormatException e) {
+                            throw new IllegalArgumentException("Invalid probability format: " + cmd);
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            if (probs.isEmpty()) {
+                throw new IllegalArgumentException("Empty command list.");
+            }
+
+            double probSum = probs.stream().mapToDouble(prob -> prob).sum();
+            if (probSum > 1) {
+                probs = probs.stream()
+                        .map(prob -> prob / probSum)
+                        .collect(Collectors.toList());
+            }
+
+            List<String> result = new ArrayList<>();
+            while (num > 0) {
+                double p = new Random().nextDouble();
+                int index = probs.indexOf(p * probSum);  // You need to find the index of the probability that matches the random number generated. This can be done by scaling the random number to match the range of probabilities and finding the index of the first element less than or equal to the scaled random number.
+                result.add(commands.get(index)); // Add the command at the selected index to the result list.
+                num--;
+            }
+            return result;
+        }
+    }
+
+    public static String choice(List<String> commands) {
+        Random rand = new Random();
+        float sum = 0.0F;
+        List<Float> probs = commands.stream().map((cmd) -> {
+            return Float.parseFloat(cmd.split("\\|")[1]);
+        }).collect(Collectors.toList());
+
+        float f;
+        for (Iterator var4 = probs.iterator(); var4.hasNext(); sum += f) {
+            f = (Float) var4.next();
+        }
+
+        float p = rand.nextFloat();
+
+        for (int i = 0; i < probs.size(); ++i) {
+            float prob = probs.get(i);
+            if (p <= prob / sum) {
+                return commands.remove(i).split("\\|")[0];
+            }
+
+            p -= prob;
+        }
+
+        return "";
+    }
+
+    public static void dispatchMultipleCommands(CommandSender sender, String commands) {
+        String[] var2 = commands.split(",");
+        int var3 = var2.length;
+
+        for (int var4 = 0; var4 < var3; ++var4) {
+            String c = var2[var4];
+            commands = c.replaceAll("%player%", sender.getName());
+            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), commands);
+        }
+
+    }
+}
+
